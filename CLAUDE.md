@@ -9,14 +9,15 @@ when ingesting, editing, or querying.
 ## Project structure
 
 - `raw/` — Immutable source material. Never modified after ingest.
-  - `raw/inbox/` — drop zone; sort into a category below, or propose a new
-  category and confirm with the user before creating one.
+  - `raw/inbox/` — drop zone; sort into a category below, or propose a new category and confirm:w
+  -  with the user before creating one.
   - `raw/azure-devops/` — cached work-item snapshots, timestamped.
   - `raw/design-docs/` — exported or linked design documents.
   - `raw/transcripts/` — meeting/conversation transcripts.
+  - `raw/emails/` — exported email threads / written follow-ups.
 - `wiki/` — LLM-maintained, synthesized. This is what gets read during work.
   - `wiki/index.md` — master catalog (TSV). Regenerate via
-    `scripts/build-index.sh` on every ingest or edit.
+  `scripts/build-index.sh` on every ingest or edit.
   - `wiki/log.md` — append-only operation log.
   - `wiki/systems/{name}/` — overview.md, decisions/, components/,
   meetings/, features/.
@@ -64,7 +65,9 @@ Meetings also require:
 
 - Filenames: kebab-case, unique across the whole wiki (not just within a
 folder) — wikilinks resolve by filename, so collisions are ambiguous.
-- Feature folders: `{ado-id}-{slug}/`.
+- Feature folders: `{ado-id}-{slug}/`. Create only from an ADO work item or
+user-supplied ADO details — never from design docs or other non-ADO sources
+alone (see Ingest).
 - Decisions: numbered, `000N-short-title.md`, never renumbered or reused.
 - Internal cross-references: use in-prose `[[wikilinks]]`. Obsidian’s
 backlinks panel and graph derive “what points at this page” from those —
@@ -111,11 +114,17 @@ content, even outside a formal Lint pass (see Lint below).
 2. If it's an ADO work item: cache the raw response under
   `raw/azure-devops/{id}.json` before doing anything else.
 3. Discuss what it means with the user before creating or changing anything.
-4. Draft the relevant wiki page(s) — new feature, updated component, new
-  decision, etc. — and show the draft. Do not write files until approved.
+4. Draft the relevant wiki page(s) — updated component, new decision,
+  system overview, meeting, etc. — and show the draft. Do not write files
+  until approved.
 5. On approval: write the file(s), update `wiki/log.md`, regenerate `wiki/index.md` via `scripts/build-index.sh`.
 
-
+**Features are ADO-gated.** Create or update a `type: feature` page only when
+the source is an Azure DevOps work item (cached under `raw/azure-devops/`),
+or when the user explicitly supplies ADO details (id, title, state, etc.).
+Design docs, transcripts, emails, and other sources may reference a feature,
+link to an existing one, or suggest that an ADO item should be ingested next —
+they must not create a feature folder on their own.
 
 ### Starting work on a feature
 
@@ -155,34 +164,5 @@ content, even outside a formal Lint pass (see Lint below).
 
 
 
-### Lint (periodic health check)
+### Lx
 
-Mechanics first: run `scripts/lint.sh` (validates frontmatter, then
-regenerates `wiki/index.md`). If it fails, fix violations before the
-manual checks below.
-
-Then, in chat:
-1. Scan for `status: needs-review` and past-due `review_by` dates.
-2. Check `source_last_modified` vs `last_synced` for drift.
-3. Find orphan pages — nothing in-prose `[[wikilinks]]` to them, and no
-  optional `related:` entries pointing at them.
-4. Find components or systems referenced in features but with no page yet.
-5. Report findings inline in chat, organized by system — do not create a
-  file for this unless the user asks for one to keep.
-6. For anything found stale in steps 1–2, propose setting
-  `status: needs-review` on that page (confirm before writing).
-7. Append a `lint` line to `wiki/log.md` when the pass is done.
-
-### Filing a meeting
-
-File at the narrowest scope that fits: the feature's own `meetings/` if
-substantially about one feature, the system's `meetings/` if about the
-platform broadly, `wiki/meetings/` only if cross-cutting. Default to the
-narrower scope when unsure.
-
-## Boundary with code repositories
-
-Never edit files under this knowledge repo while actively writing or
-debugging code in a project repo. Knowledge updates happen at a deliberate
-checkpoint (session end, feature completion, explicit request), always
-proposed and confirmed first — never as a side effect of a code change.
