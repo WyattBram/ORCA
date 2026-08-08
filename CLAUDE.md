@@ -1,63 +1,188 @@
-# Engineering Knowledge — Schema & Conventions
+# ORCA
 
-This repository is a living engineering knowledge base. Raw source material is ingested into `raw/`; synthesized, maintained pages live in `wiki/`. Keep this document as the source of truth for structure and frontmatter.
+**ORCA** (Operational Records & Context Archive) is an engineering knowledge
+base: source material lands in `raw/` and stays immutable after ingest;
+synthesized pages live in `wiki/` and are maintained by LLMs (with human
+review). This file is the schema and conventions for that work — follow it
+when ingesting, editing, or querying.
 
-## raw/ vs wiki/
+## Project structure
 
-**`raw/`** holds immutable source material: dumps, exports, transcripts, design docs as received. After ingest, files under `raw/` are never edited. Correct mistakes by adding a new raw artifact or noting the correction in the wiki — do not rewrite history in place.
+- `raw/` — Immutable source material. Never modified after ingest.
+  - `raw/inbox/` — drop zone; sort into a category below, or propose a new
+  category and confirm with the user before creating one.
+  - `raw/azure-devops/` — cached work-item snapshots, timestamped.
+  - `raw/design-docs/` — exported or linked design documents.
+  - `raw/transcripts/` — meeting/conversation transcripts.
+- `wiki/` — LLM-maintained, synthesized. This is what gets read during work.
+  - `wiki/index.md` — master catalog (TSV). Regenerate via
+    `scripts/build-index.sh` on every ingest or edit.
+  - `wiki/log.md` — append-only operation log.
+  - `wiki/systems/{name}/` — overview.md, decisions/, components/,
+  meetings/, features/.
+  - `wiki/entities/` — people/, teams/, external-systems/.
+  - `wiki/practices/` — conventions, glossary, cross-cutting patterns not
+  tied to one system.
+  - `wiki/meetings/` — cross-cutting meetings not scoped to one system.
 
-**`wiki/`** holds synthesized knowledge maintained by Claude (and humans reviewing Claude's work). Pages here are derived from raw sources, prior wiki pages, and ongoing decisions. Edit freely to keep the steady-state picture accurate; link back to raw sources where they exist.
 
-New category folders under `raw/` must be proposed and confirmed before creation. Do not invent new `raw/` categories silently.
 
-## Frontmatter schema (wiki/ pages)
+## Frontmatter
 
-Every wiki page should use YAML frontmatter. Fields below are conventions, not a filled catalog of values.
+Every wiki page requires:
+    ---
+    type: system | component | decision | feature | meeting |
+          entity-person | entity-team | entity-external | practice
+    status: draft | active | needs-review | superseded | archived
+    created: YYYY-MM-DD
+    updated: YYYY-MM-DD
+    related_systems: []
+    ---
 
-| Field | Values / form | When to use |
-| --- | --- | --- |
-| `status` | `draft` \| `active` \| `needs-review` \| `superseded` \| `archived` | All wiki pages |
-| `feature_status` | `in-progress` \| `shipped` \| `cancelled` | Feature pages only |
-| `review_by` | date (`YYYY-MM-DD`) | Docs with no external source of truth (set a review date) |
-| `source_last_modified` | date or timestamp | Docs tied to an external source |
-| `last_synced` | date or timestamp | Docs tied to an external source (when this wiki page was last brought in sync) |
-| `related_systems` | list of wiki paths or ids | Cross-links to systems |
-| `related_projects` | list of wiki paths or ids | Cross-links to projects |
-| `component` | component identifier / path | When the page is scoped to a component |
-| `superseded_by` | path to the replacement page | Only when `status: superseded` |
+`related_systems` is required on every page (use `[]` when none apply).
+It is a flat list of system names for the index — not a linking mechanism.
 
-Omit fields that do not apply. Prefer empty omission over placeholder values.
+Add these fields when applicable:
+    feature_status: in-progress | shipped | cancelled | on-pause     # features only
+    component: cel-rules-engine                             # features only
+    review_by: YYYY-MM-DD          # docs with no external source (systems,
+                                    # components, practices) — mandatory if
+                                    # source_last_modified/last_synced below
+                                    # don't apply
+    source_last_modified:    # docs derived from an external
+    last_synced:             # source (ADO, design doc)
+    superseded_by: path/to/new-decision.md    # decisions only, once superseded
+    related:                 # optional — non-obvious relationships only;
+                             # prefer in-prose [[wikilinks]] for normal cross-refs
 
-## Decisions
+Meetings also require:
+    date: YYYY-MM-DD
+    attendees:               # list (structure not schema-validated)
+    action_items:            # nested list (structure not schema-validated)
 
-Decisions are **append-only**. They live under a system's `decisions/` folder (created when that system first needs one).
+## Naming and linking
 
-- Never edit a decision file after it is written.
-- To change course, add a new decision file that supersedes the old one and links back to it. Do not rewrite or amend the superseded decision's body or frontmatter.
+- Filenames: kebab-case, unique across the whole wiki (not just within a
+folder) — wikilinks resolve by filename, so collisions are ambiguous.
+- Feature folders: `{ado-id}-{slug}/`.
+- Decisions: numbered, `000N-short-title.md`, never renumbered or reused.
+- Internal cross-references: use in-prose `[[wikilinks]]`. Obsidian’s
+backlinks panel and graph derive “what points at this page” from those —
+do not maintain a parallel manual link list in frontmatter for that job.
+Optional `related:` is only for calling out a non-obvious relationship
+that prose alone would miss.
+- Links from a wiki page back to a `raw/` source: relative markdown link
+(`[label](../../raw/design-docs/...)`), not a wikilink — raw/ is source
+material Obsidian doesn't need to graph, and a wikilink there gets you an
+orphan-looking node with no real relationship.
+- Renaming a wiki page: grep for `[[old-name]]` across wiki/ and update
+references — Claude Code file operations don't go through Obsidian's
+automatic link updater.
 
-## Meetings
 
-File meetings at the narrowest applicable scope:
 
-1. **Feature-level** `meetings/` — the meeting is about one feature.
-2. **System-level** `meetings/` — the meeting is about that system / platform broadly.
-3. **Top-level** `wiki/meetings/` — only for cross-cutting meetings that do not fit a single system or feature.
+## wiki/index.md
 
-Do not duplicate the same meeting under multiple scopes; choose one home and link from elsewhere if needed.
+Generated, not hand-maintained. Run `scripts/build-index.sh` to regenerate
+from frontmatter across wiki/. Never edit `wiki/index.md` directly — edit the
+source page's frontmatter and regenerate. Format: tab-delimited,
+columns: path, type, status, feature_status, updated, related_systems.
 
-## Features
+## wiki/log.md
 
-Feature folders have **no fixed template**. Start with `overview.md` only. Add `design.md`, `diagrams/`, `meetings/`, and similar only when that feature actually needs them.
+Hand-maintained, append-only — never edit or delete existing lines.
+Tab-delimited: date, action, description. action is one of:
+ingest | update | decision | ship | archive | lint. Append one line as
+part of every ingest/update/ship/decision/lint workflow.
 
-When a feature ships:
+## Workflows
 
-1. Set its `feature_status` to `shipped` (and update `status` as appropriate).
-2. Update the relevant component page(s) under the system so they reflect the new steady state.
-3. Add a one-line **"Touched by"** backlink from each updated component page to the feature.
 
-Features are never deleted or moved after completion. They remain in place as the detailed historical record.
 
-## Catalog & log
+### Reading any wiki page
 
-- **`index.md`** — generated-and-maintained catalog of wiki content, organized by section (systems, entities, practices, meetings). Update on every ingest or structural change.
-- **`log.md`** — chronological change log. Update on every ingest or change. Entry format: `## [YYYY-MM-DD] <action> | <description>`.
+Whenever reading a systems/components/practices page with a review_by
+date, check if it's passed. If so, mention it before using the page's
+content, even outside a formal Lint pass (see Lint below).
+
+### Ingest (new source arrives)
+
+1. Read the source (from `raw/inbox/` or wherever it landed).
+2. If it's an ADO work item: cache the raw response under
+  `raw/azure-devops/{id}.json` before doing anything else.
+3. Discuss what it means with the user before creating or changing anything.
+4. Draft the relevant wiki page(s) — new feature, updated component, new
+  decision, etc. — and show the draft. Do not write files until approved.
+5. On approval: write the file(s), update `wiki/log.md`, regenerate `wiki/index.md` via `scripts/build-index.sh`.
+
+
+
+### Starting work on a feature
+
+1. Check `wiki/index.md` for the feature's current entry and status.
+2. Read the feature's `overview.md`, then only the additional files in its
+  folder that are actually relevant (design.md, linked decisions, etc.) —
+   don't read everything in the folder by default.
+3. Read the relevant `components/{x}.md` for current system state.
+4. If `source_last_modified` is newer than `last_synced`, or `status` is
+  `needs-review`, tell the user before proceeding.
+
+
+
+### Completing a feature
+
+1. Update `feature_status: shipped` in the feature's frontmatter.
+2. Propose updates to the relevant `components/*.md` reflecting the new
+  steady state — this is a revision, not a copy of the feature content.
+3. Add a one-line "Touched by" backlink from the component page to the
+  feature.
+4. Never delete or move the feature folder — it stays as the detailed
+  historical record.
+5. Confirm all of the above with the user before writing; this is a
+  deliberate checkpoint, not something to do mid-session as a side effect
+   of code changes.
+
+
+
+### Query
+
+1. Read `wiki/index.md` to find relevant pages.
+2. Read those pages and synthesize an answer — don't reproduce large
+  spans of any single page verbatim.
+3. Note the source pages used.
+4. If the synthesis is novel and worth keeping, offer to file it back as
+  a wiki update rather than letting it live only in chat.
+
+
+
+### Lint (periodic health check)
+
+Mechanics first: run `scripts/lint.sh` (validates frontmatter, then
+regenerates `wiki/index.md`). If it fails, fix violations before the
+manual checks below.
+
+Then, in chat:
+1. Scan for `status: needs-review` and past-due `review_by` dates.
+2. Check `source_last_modified` vs `last_synced` for drift.
+3. Find orphan pages — nothing in-prose `[[wikilinks]]` to them, and no
+  optional `related:` entries pointing at them.
+4. Find components or systems referenced in features but with no page yet.
+5. Report findings inline in chat, organized by system — do not create a
+  file for this unless the user asks for one to keep.
+6. For anything found stale in steps 1–2, propose setting
+  `status: needs-review` on that page (confirm before writing).
+7. Append a `lint` line to `wiki/log.md` when the pass is done.
+
+### Filing a meeting
+
+File at the narrowest scope that fits: the feature's own `meetings/` if
+substantially about one feature, the system's `meetings/` if about the
+platform broadly, `wiki/meetings/` only if cross-cutting. Default to the
+narrower scope when unsure.
+
+## Boundary with code repositories
+
+Never edit files under this knowledge repo while actively writing or
+debugging code in a project repo. Knowledge updates happen at a deliberate
+checkpoint (session end, feature completion, explicit request), always
+proposed and confirmed first — never as a side effect of a code change.
