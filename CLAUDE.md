@@ -9,8 +9,8 @@ when ingesting, editing, or querying.
 ## Project structure
 
 - `raw/` — Immutable source material. Never modified after ingest.
-  - `raw/inbox/` — drop zone; sort into a category below, or propose a new category and confirm:w
-  -  with the user before creating one.
+  - `raw/inbox/` — drop zone; sort into a category below, or propose a new
+  category and confirm with the user before creating one.
   - `raw/azure-devops/` — cached work-item snapshots, timestamped.
   - `raw/design-docs/` — exported or linked design documents.
   - `raw/transcripts/` — meeting/conversation transcripts.
@@ -161,8 +161,4 @@ they must not create a feature folder on their own.
 3. Note the source pages used.
 4. If the synthesis is novel and worth keeping, offer to file it back as
   a wiki update rather than letting it live only in chat.
-
-
-
-### Lx
 
