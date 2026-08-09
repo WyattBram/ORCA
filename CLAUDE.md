@@ -15,17 +15,15 @@ when ingesting, editing, or querying.
   - `raw/design-docs/` — exported or linked design documents.
   - `raw/transcripts/` — meeting/conversation transcripts.
 - `wiki/` — LLM-maintained, synthesized. This is what gets read during work.
-  - `wiki/index.md` — master catalog (TSV). Regenerate via
+  - `wiki/index.md` —  — see "wiki/index.md" section below.
     `scripts/build-index.sh` on every ingest or edit.
-  - `wiki/log.md` — append-only operation log.
+  - `wiki/log.md` — see "wiki/log.md" section below.
   - `wiki/systems/{name}/` — overview.md, decisions/, components/,
   meetings/, features/.
   - `wiki/entities/` — people/, teams/, external-systems/.
   - `wiki/practices/` — conventions, glossary, cross-cutting patterns not
   tied to one system.
   - `wiki/meetings/` — cross-cutting meetings not scoped to one system.
-
-
 
 ## Frontmatter
 
@@ -79,8 +77,6 @@ orphan-looking node with no real relationship.
 references — Claude Code file operations don't go through Obsidian's
 automatic link updater.
 
-
-
 ## wiki/index.md
 
 Generated, not hand-maintained. Run `scripts/build-index.sh` to regenerate
@@ -96,8 +92,6 @@ ingest | update | decision | ship | archive | lint. Append one line as
 part of every ingest/update/ship/decision/lint workflow.
 
 ## Workflows
-
-
 
 ### Reading any wiki page
 
@@ -115,8 +109,6 @@ content, even outside a formal Lint pass (see Lint below).
   decision, etc. — and show the draft. Do not write files until approved.
 5. On approval: write the file(s), update `wiki/log.md`, regenerate `wiki/index.md` via `scripts/build-index.sh`.
 
-
-
 ### Starting work on a feature
 
 1. Check `wiki/index.md` for the feature's current entry and status.
@@ -126,8 +118,6 @@ content, even outside a formal Lint pass (see Lint below).
 3. Read the relevant `components/{x}.md` for current system state.
 4. If `source_last_modified` is newer than `last_synced`, or `status` is
   `needs-review`, tell the user before proceeding.
-
-
 
 ### Completing a feature
 
@@ -142,8 +132,6 @@ content, even outside a formal Lint pass (see Lint below).
   deliberate checkpoint, not something to do mid-session as a side effect
    of code changes.
 
-
-
 ### Query
 
 1. Read `wiki/index.md` to find relevant pages.
@@ -152,8 +140,6 @@ content, even outside a formal Lint pass (see Lint below).
 3. Note the source pages used.
 4. If the synthesis is novel and worth keeping, offer to file it back as
   a wiki update rather than letting it live only in chat.
-
-
 
 ### Lint (periodic health check)
 
